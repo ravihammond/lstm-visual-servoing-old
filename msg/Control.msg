@@ -1,0 +1,9 @@
+Header header
+float64 vx
+float64 vy
+float64 vz
+float64 rx
+float64 ry
+float64 rz
+float64 open
+float64 close

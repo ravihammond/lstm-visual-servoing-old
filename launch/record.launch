@@ -1,0 +1,26 @@
+<launch>
+    <!-- will automatically start roscore if not currently running -->
+
+    <rosparam param="joy_node/dev">"/dev/input/js0"</rosparam>
+    <node pkg="joy" name="joystick" type="joy_node"/>
+    <!--<node pkg="lstm_visual_servoing" name="state_machine" type="state_machine.py" output="screen"/>-->
+    <node pkg="lstm_visual_servoing" name="state_machine" type="state_machine.py" output="screen"/>
+    <!--<node pkg="lstm_visual_servoing" name="record" type="record.py" output="screen"/>-->
+    <node pkg="lstm_visual_servoing" name="user_input" type="user_input.py" output="screen"/>
+    <node pkg="ros_ur_driver" name="driver" type="ur_driver_lite.py" output="screen"/>
+    <include file="/opt/ros/kinetic/share/realsense_camera/launch/sr300_nodelet_rgbd.launch">
+    </include>
+
+    <!--
+<node pkg="ur5_picking_demo" name="realsense" type="realsense_restarter.py" output="screen"/>
+<node pkg="rviz" name="rviz" type="rviz" args="-d /home/ur/.rviz/deep_visual_servoing.rviz"/>
+  <node pkg="rviz" name="rviz" type="rviz"/>
+
+  <include file="/opt/ros/kinetic/share/realsense_camera/launch/sr300_nodelet_rgbd.launch">
+  </include>
+  <node pkg="ur5_picking_demo" name="server" type="inference_server.py" output="screen"/>
+  <node pkg="ur5_picking_demo" name="driver" type="ur_driver_lite.py" output="screen"/>
+  <node pkg="ur5_picking_demo" name="realsense" type="realsense_restarter.py" output="screen"/>
+-->
+</launch>
+

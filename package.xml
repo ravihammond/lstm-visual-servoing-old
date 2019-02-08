@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>lstm_visual_servoing</name>
+    <version>0.0.0</version>
+    <description>Controls robot arm using LSTM-trained deep visual servoing</description>
+
+    <maintainer email="ravihammond@gmail.com">Ravi Hammond</maintainer>
+
+    <license>MIT</license>
+
+    <!-- Url tags are optional, but multiple are allowed, one per tag -->
+    <!-- Optional attribute type can be: website, bugtracker, or repository -->
+    <!-- Example: -->
+    <!-- <url type="website">http://wiki.ros.org/lstm_visual_servoing</url> -->
+
+    <author email="ravihammond@gmail.com">Ravi Hammond</author> 
+
+
+    <buildtool_depend>catkin</buildtool_depend>
+    <build_depend>geometry_msgs</build_depend>
+    <build_depend>rospy</build_depend>
+    <build_depend>std_msgs</build_depend>
+    <build_depend>sensor_msgs</build_depend>
+    <build_depend>message_generation</build_depend>
+
+    <build_export_depend>geometry_msgs</build_export_depend>
+    <build_export_depend>rospy</build_export_depend>
+    <build_export_depend>std_msgs</build_export_depend>
+    <build_export_depend>sensor_msgs</build_export_depend>
+
+    <exec_depend>geometry_msgs</exec_depend>
+    <exec_depend>rospy</exec_depend>
+    <exec_depend>std_msgs</exec_depend>
+    <exec_depend>sensor_msgs</exec_depend>
+    <exec_depend>message_runtime</exec_depend>
+
+
+    <!-- The export tag contains other, unspecified, tags -->
+    <export>
+        <!-- Other tools can request additional information be placed here -->
+
+    </export>
+</package>
+
