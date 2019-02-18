@@ -1,8 +1,10 @@
 from __future__ import print_function
+
 import argparse
 import os
 import sys
 import csv
+import shutil
 
 from utils import query_yes_no
 from pytorch import TrainManager
@@ -117,5 +119,5 @@ if __name__ == "__main__" :
     #Create trainer, load the data, and train the model
     train_manager = TrainManager(training_dir, models_dir, args.split, args.epochs, valid_sequences)
     train_manager.load_data()
-    # train_manager.train_model()
+    train_manager.train_model()
 

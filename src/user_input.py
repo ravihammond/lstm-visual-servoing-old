@@ -12,8 +12,10 @@ class UserInput:
         self.ctrl_pub = rospy.Publisher("visual_control",lstm_visual_servoing.msg.Control,queue_size=10)
         self.record_pub = rospy.Publisher("record_enabled",lstm_visual_servoing.msg.Recorder,queue_size=10)
 
+        self._claw_state = "open"
         print("User Input Spinning")
         self.spin()
+
 
     def spin(self):
         # Create blank message
@@ -34,17 +36,26 @@ class UserInput:
 
         # Create a new robot control message
         msg = lstm_visual_servoing.msg.Control()
+
         # Translation
         msg.vx = - deadband(left_x)
         msg.vy = - deadband(left_y)
         msg.vz = deadband(trig_l/2.0 - trig_r/2.0)
+
         # Rotation
         msg.rx =  deadband(right_y)
         msg.ry = - deadband(right_x)
         msg.rz = bump_r - bump_l
-        # Claw
-        msg.open = -1.0 if btn_b == 0.0 else 1.0
-        msg.close = -1.0 if btn_a == 0.0 else 1.0
+
+        # Claw 0.0 = open, 1.0 = closed, default open
+        msg.claw = 0.0 if self._claw_state == "open" else 1.0
+        if btn_a == 0.0 and btn_b == 1.0 and self._claw_state == "open":
+            self._claw_state = "closed"
+            msg.claw = 1.0
+        if btn_a == 1.0 and btn_b == 0.0 and self._claw_state == "closed":
+            self._claw_state = "open"
+            msg.claw = 0.0
+
         self.ctrl_msg = msg
 
         # Create a new Recorder message

@@ -5,14 +5,8 @@
     <description>Controls robot arm using LSTM-trained deep visual servoing</description>
 
     <maintainer email="ravihammond@gmail.com">Ravi Hammond</maintainer>
-
     <license>MIT</license>
-
-    <!-- Url tags are optional, but multiple are allowed, one per tag -->
-    <!-- Optional attribute type can be: website, bugtracker, or repository -->
-    <!-- Example: -->
-    <!-- <url type="website">http://wiki.ros.org/lstm_visual_servoing</url> -->
-
+    <url type="website">https://github.com/Vaderico/lstm-visual-servoing</url> 
     <author email="ravihammond@gmail.com">Ravi Hammond</author> 
 
 

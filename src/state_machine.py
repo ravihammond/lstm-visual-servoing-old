@@ -31,18 +31,20 @@ class StateMachine:
         self.visual_control_msg = lstm_visual_servoing.msg.Control()
 
         claw_control = 0
+        prev_claw_state = True
+        last_claw_change_time = time.time()
 
         #process the latest control message at 30Hz
         r = rospy.Rate(20)
         while not rospy.is_shutdown():
             try:
-                camera_t,camera_r = self.tf_listener.lookupTransform( 'base','camera_rgb_optical_frame', rospy.Time())
+                camera_t,camera_r = self.tf_listener.lookupTransform(
+                        'base','camera_color_optical_frame', rospy.Time())
                 q_camera = pyquaternion.Quaternion(camera_r[3],camera_r[0],camera_r[1],camera_r[2])
                 ctrl = self.visual_control_msg
                 tran_v = q_camera.rotate((ctrl.vx,ctrl.vy,ctrl.vz))
                 rot_v = q_camera.rotate((ctrl.rx,ctrl.ry,ctrl.rz))
-                claw_open = ctrl.open
-                claw_close = ctrl.close
+                claw_msg = ctrl.claw
 
                 safe_trans_v, safe_rot_v = self.get_safety_return_speeds(camera_t,camera_r)
 
@@ -74,20 +76,19 @@ class StateMachine:
                 msg.angular.y *= r_speed
                 msg.angular.z *= r_speed
 
-                if claw_open == 1.0:
-                    claw_control = 1
-                if claw_close == 1.0:
-                    claw_control = 90
+                new_claw_state = claw_msg > 0.5
 
-                # print(msg)
+                if new_claw_state == prev_claw_state:
+                    last_claw_change_time = time.time()
+
                 if time.time() - self.last_control_msg_time < 1.0:
-                    if claw_open is not claw_close:
-                        self.pub_grip.publish(claw_control)
+                    if time.time() - last_claw_change_time > 0.1:
+                        self.pub_grip.publish(0 if new_claw_state else 100)
+                        prev_claw_state = new_claw_state
                     self.pub.publish(msg)
-                # self.tf_broadcaster.sendTransform(camera_t,(safe_q[1],safe_q[2],safe_q[3],safe_q[0] ),rospy.Time.now(),"safe","base")
 
-            except (tf.LookupException,tf.ExtrapolationException):
-                pass
+            except (tf.LookupException,tf.ExtrapolationException) as e:
+                print("Error: %s" % e)
 
             r.sleep()
 

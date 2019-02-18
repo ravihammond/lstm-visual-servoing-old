@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 from __future__ import print_function
+
 import rospy
 import std_msgs.msg
 import sensor_msgs.msg
@@ -26,7 +27,7 @@ from utils import query_yes_no
 class Recorder():
     def __init__(self, training_dir, max_frames):
         rospy.init_node('recorder', anonymous=False)
-        rospy.Subscriber("/camera/rgb/image_raw", sensor_msgs.msg.Image, self.image_callback)
+        rospy.Subscriber("/camera/color/image_raw", sensor_msgs.msg.Image, self.image_callback)
         rospy.Subscriber("visual_control",lstm_visual_servoing.msg.Control,self.control_callback)
         rospy.Subscriber("record_enabled",lstm_visual_servoing.msg.Recorder,self.recorder_callback)
 
@@ -102,7 +103,8 @@ class Recorder():
         return { "sequences" : sequences, "frames" : frames, "time" : frames / self._frame_rate}
 
     def record(self):
-        cv2.namedWindow("Recorder", cv2.WINDOW_OPENGL)
+        # cv2.namedWindow("Recorder", cv2.WINDOW_OPENGL)
+        cv2.namedWindow("Recorder")
         r = rospy.Rate(self._frame_rate)
 
         # Loop while ros is not shutdown, and the cv2 window is open
@@ -140,7 +142,6 @@ class Recorder():
                 # Saving state
                 elif self._recording_state is 2:
                     img_show = self.saving_overlay(img_show)
-                # print(cv2.getWindowProperty("Recorder", cv2.WND_PROP_VISIBLE))
 
                 #show the image to the user
                 h,w,c = img_show.shape
@@ -315,8 +316,7 @@ class Recorder():
                 msg.rx,
                 msg.ry,
                 msg.rz,
-                msg.open,
-                msg.close,
+                msg.claw
             ]
 
 # Ensures the training data directory exists
@@ -335,6 +335,7 @@ def check_training_directory(directory):
             sys.exit()
 
     return directory
+
 
 # Main function
 if __name__ == "__main__" :
