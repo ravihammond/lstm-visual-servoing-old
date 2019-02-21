@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 import torch
 import rospy
+import tf
 
 import cv2
 import numpy as np
@@ -19,6 +20,7 @@ class VisualServo():
 
         self.ctrl_pub = rospy.Publisher("visual_control",lstm_visual_servoing.msg.Control,queue_size=10)
         rospy.Subscriber("/camera/color/image_raw", sensor_msgs.msg.Image, self.image_callback)
+        self._tf_listener = tf.TransformListener()
 
         self._img_rgb = None
 
@@ -61,46 +63,45 @@ class VisualServo():
                 img_resized = cv2.resize(img_crop,(224,224))
                 cv2.imshow("Camera",img_resized[:,:,::-1])
                 cv2.waitKey(1)
-                # img_resized = img_resized[:,:,::-1].copy()
                 img_tensor = transform(img_resized)
-                # print(img_tensor)
                 img_tensor.unsqueeze_(0)
 
-                X = torch.autograd.Variable(img_tensor, volatile=True).cuda()
+                X_img = torch.autograd.Variable(img_tensor, volatile=True).cuda()
+                camera_t, camera_r = self._tf_listener.lookupTransform(
+                    'base','camera_color_optical_frame', rospy.Time())
+                np_coords = np.array(camera_t).reshape((1,3))
+                # print("np_coords")
+                # print(np_coords.shape)
+                # print(np_coords)
+                tens_coords = torch.FloatTensor(np_coords)
+                # print("tens_coords")
+                # print(tens_coords.shape)
+                # print(tens_coords)
+                X_coords = torch.autograd.Variable(tens_coords, volatile=True).cuda()
+                # print("X_coords")
+                # print(X_coords.shape)
+                # print(X_coords)
 
-                y_vel, y_open, y_close = self._model(X)
+                y_vel, y_claw = self._model(X_img, X_coords)
                 np_vel = np.squeeze(np.array(y_vel.data))
-                np_open = np.squeeze(np.array(y_open.data))
-                np_close = np.squeeze(np.array(y_close.data))
-
-                # np_open = np.array([5,4], dtype=np.float)
-                # if i % 100 == 0:
-                    # np_open = np.array([3,6], dtype=np.float)
-
-                # np_close = np.array([5,4], dtype=np.float)
-                # if (i + 50) % 100 == 0:
-                    # np_close = np.array([3,6], dtype=np.float)
+                np_claw = np.squeeze(np.array(y_claw.data))
 
                 vel_str = np.array2string(np_vel, precision=3, floatmode='fixed')
-                open_str = np.array2string(np_open, precision=0, floatmode='fixed')
-                close_str = np.array2string(np_close, precision=0, floatmode='fixed')
+                claw_str = np.array2string(np_claw, precision=0, floatmode='fixed')
 
-                msg_vel = np_vel * 1.8
+                msg_vel = np_vel * 3.8 * 1.5
                 msg_vel = smooth_a * (msg_vel - out_smooth)
 
-                y_open.cpu()
-                msg_open = np.where(np_open == np.max(np_open))[0]
-                msg_close = np.where(np_close == np.max(np_close))[0]
-                output_str = "%s %s:%d %s:%d i: %d" % (vel_str, open_str, msg_open, close_str, msg_close, i)
-                print(output_str)
+                msg_claw = np_claw
+                # output_str = "%s %s:%d i: %d" % (vel_str, claw_str, i)
+                # print(output_str)
                 # print(msg_vel)
                 # print(msg_open)
                 # print(msg_close)
 
                 msg = lstm_visual_servoing.msg.Control()
                 msg.vx,msg.vy,msg.vz,msg.rx,msg.ry,msg.rz = msg_vel
-                msg.open = msg_open
-                msg.close = msg_close
+                msg.claw = msg_claw
 
             self.ctrl_pub.publish(msg)
             r.sleep()

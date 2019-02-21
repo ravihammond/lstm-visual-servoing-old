@@ -36,14 +36,16 @@ class SequenceDataset(data.Dataset):
             with open(os.path.join(seq_path, self._vel_filename), "r") as csvfile:
                 reader = csv.reader(csvfile)
                 next(reader)
+
                 vel_list = [list(map(float, row)) for row in reader] 
                 vel = np.array(vel_list)
                 np.set_printoptions(precision=4)
 
-                y_vel = torch.FloatTensor((vel)[:,:6])
+                y_vel = torch.FloatTensor(vel[:,:6])
                 y_claw = torch.FloatTensor(vel[:,6])
+                X_coords = torch.FloatTensor(vel[:,7:10])
 
-                self._seq_to_vel[seq_path] = (y_vel, y_claw)
+                self._seq_to_vel[seq_path] = (y_vel, y_claw, X_coords)
 
     # Create list of sequence directory paths to the start and stop intervals
     def init_intervals(self):
@@ -87,16 +89,17 @@ class SequenceDataset(data.Dataset):
             img = np.array(Image.open(image_path))
             img = self._transform(img)
             images_list.append(img)
-
-        # Convert list of images to tensor
-        X = torch.stack(images_list)
-
         # Extract subseqence from large recording
         outputs = self._seq_to_vel[seq_path]
+
+        # Convert list of images to tensor
+        X_img = torch.stack(images_list)
+        X_coords = outputs[2][start - 1:end]
+
         y_vel = outputs[0][start - 1:end]
         y_claw = outputs[1][start - 1:end]
 
-        return X, y_vel, y_claw
+        return X_img, X_coords, y_vel, y_claw
 
     def create_claw_vector(self, val):
         return torch.Float
@@ -107,8 +110,7 @@ if __name__ == "__main__":
     from torchvision import datasets, models, transforms
     from torch.utils.data import DataLoader
 
-    seq_dirs = ['training_data/pickup_drop/15-02-2019_17-04-13']
-    # seq_dirs = ['training_data/numbers/test_sequence']
+    seq_dirs = ['training_data/rubbish_bin/19-02-2019_18-51-09_good']
 
     # random.shuffle(sequence_dirs)
     data_transforms = transforms.Compose([
@@ -119,16 +121,17 @@ if __name__ == "__main__":
     dataset = SequenceDataset(seq_dirs, 500, data_transforms)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=1) 
 
-    for X, y_vel, y_claw in dataloader:
-        X = torch.squeeze(X)
+    for X_img, X_coords, y_vel, y_claw in dataloader:
+        X_img = torch.squeeze(X_img)
+        X_coords = torch.squeeze(X_coords)
         y_vel = torch.squeeze(y_vel)
-        y_claw = torch.squeeze(y_open)
-        for i in range(len(X)):
+        y_claw = torch.squeeze(y_claw)
+        for i in range(len(X_img)):
             vel_str = np.array2string(np.array(y_vel[i]), precision=2, floatmode='fixed')
-            open_str = np.array2string(np.array(y_open[i]), precision=0, floatmode='fixed')
-            close_str = np.array2string(np.array(y_close[i]), precision=0, floatmode='fixed')
-            output_str = vel_str + open_str + close_str
-            img = X[i,:,:,:].numpy().transpose(1,2,0).copy()
+            claw_str = np.array2string(np.array(y_claw[i]), precision=0, floatmode='fixed')
+            coords_str = np.array2string(np.array(X_coords[i]), precision=2, floatmode='fixed')
+            output_str = vel_str + ' ' + claw_str + ' ' + coords_str
+            img = X_img[i,:,:,:].numpy().transpose(1,2,0).copy()
             img *= 40
             img += 127
             img = img.astype("uint8")

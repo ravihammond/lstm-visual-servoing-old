@@ -9,6 +9,7 @@ class UserInput:
     def __init__(self):
         rospy.init_node('user_input', anonymous=False)
         rospy.Subscriber("joy", sensor_msgs.msg.Joy, self.joystick_callback)
+
         self.ctrl_pub = rospy.Publisher("visual_control",lstm_visual_servoing.msg.Control,queue_size=10)
         self.record_pub = rospy.Publisher("record_enabled",lstm_visual_servoing.msg.Recorder,queue_size=10)
 

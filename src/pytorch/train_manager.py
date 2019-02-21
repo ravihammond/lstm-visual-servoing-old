@@ -35,7 +35,7 @@ class TrainManager():
         self._lr = 0.0001
         self._hidden_dim = 2000
         self._middle_out_dim = 500
-        self._pref_seq_length = 600
+        self._pref_seq_length = 700
         self._avg_pool = False
 
         self._plot_title = "seqlen: %d, h: %d, lr: %f, mid: %d, avgpool: %s" % (
@@ -95,21 +95,21 @@ class TrainManager():
             self.gen_dataset_intervals()
 
             # Iterate over data.
-            for i, (X, y_vel, y_open, y_close) in enumerate(self._dataloaders['train']):
-                X = Variable(torch.squeeze(X)).cuda()
+            for i, (X_img, X_coords, y_vel, y_claw) in enumerate(self._dataloaders['train']):
+                X_img = Variable(torch.squeeze(X_img)).cuda()
+                X_coords = Variable(torch.squeeze(X_coords)).cuda()
                 y_vel = Variable(torch.squeeze(y_vel)).cuda()
-                y_open = Variable(torch.squeeze(y_open)).cuda()
-                y_close = Variable(torch.squeeze(y_close)).cuda()
+                y_claw = Variable(torch.squeeze(y_claw)).cuda()
 
                 optimizer.zero_grad()
                 self._model.init_hidden()
                             
-                out_vel, out_open, out_close = self._model(X)
+                out_vel, out_claw = self._model(X_img, X_coords)
 
                 loss_vel = self.vel_criterion(out_vel, y_vel)
-                loss_open = self.claw_criterion(out_open, y_open)
-                loss_close = self.claw_criterion(out_close, y_close)
-                loss = loss_vel + loss_open + loss_close
+                loss_claw = self.claw_criterion(out_claw, y_claw)
+                # print(loss_vel.data[0], loss_claw.data[0])
+                loss = loss_vel + loss_claw
 
                 loss.backward(retain_graph=True)
                 optimizer.step()
@@ -130,10 +130,12 @@ class TrainManager():
             self.plot_loss(train_loss_list, val_loss_list)
 
             # save as latest model, and save as best if it has the lowest validation loss
-            torch.save(self._model, os.path.join(self._models_dir, "last_model.pt"))
+            if (epoch + 1) % 10 == 0:
+                torch.save(self._model, os.path.join(self._models_dir, "model_%d.pt" % (epoch + 1)))
+
             if val_loss < best_loss:
                 best_loss = val_loss
-                torch.save(self._model, os.path.join(self._models_dir, "model.pt"))
+                torch.save(self._model, os.path.join(self._models_dir, "best_model.pt"))
 
         # print total time taken to train
         print('Training complete in %s     ' % self.get_time(time.time() - since))
@@ -141,19 +143,18 @@ class TrainManager():
     def test(self, phase, since):
         loss = 0.0
         self._model.eval()  
-        for i, (X, y_vel, y_open, y_close) in enumerate(self._dataloaders[phase]):
-            X = Variable(torch.squeeze(X), volatile=True).cuda()
+        for i, (X_img, X_coords, y_vel, y_claw) in enumerate(self._dataloaders[phase]):
+            X_img = Variable(torch.squeeze(X_img), volatile=True).cuda()
+            X_coords = Variable(torch.squeeze(X_coords), volatile=True).cuda()
             y_vel = Variable(torch.squeeze(y_vel), volatile=True).cuda()
-            y_open = Variable(torch.squeeze(y_open), volatile=True).cuda()
-            y_close = Variable(torch.squeeze(y_close), volatile=True).cuda()
+            y_claw = Variable(torch.squeeze(y_claw), volatile=True).cuda()
 
             self._model.init_hidden()
-            out_vel, out_open, out_close = self._model(X)
+            out_vel, out_claw = self._model(X_img, X_coords)
 
             loss_vel = self.vel_criterion(out_vel, y_vel)
-            loss_open = self.claw_criterion(out_open, y_open)
-            loss_close = self.claw_criterion(out_close, y_close)
-            loss += loss_vel + loss_open + loss_close
+            loss_claw = self.claw_criterion(out_claw, y_claw)
+            loss += loss_vel + loss_claw
 
             print('Calculating %s loss: %0.1f%%, time: %s%s' % (phase, 
                 (float(i + 1) / self._dataset_sizes[phase]) * 100, self.get_time(time.time() - since), 

@@ -13,7 +13,8 @@ def check_model_directory(model_dir):
     if not os.path.exists(model_dir):
         sys.exit("Error: model directory %s does not exist")
 
-    model_path = os.path.join(model_dir, "model.pt")
+    # model_path = os.path.join(model_dir, "model.pt")
+    model_path = os.path.join(model_dir, "model_50.pt")
 
     # Ensures training data directory exists
     if not os.path.exists(model_path):

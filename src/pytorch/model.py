@@ -9,20 +9,19 @@ class LSTMController(nn.Module):
     def __init__(self, hidden_dim, middle_out_dim, avg_pool):
         super(LSTMController, self).__init__()
         resnet_cutoff = -1 if avg_pool else -2
-        res18_out_dim = 512 if avg_pool else 512*7*7
+        cnn_out_dim = 512 if avg_pool else 512*7*7
         self._hidden_dim = hidden_dim
 
         self.init_hidden()
 
-        self._res18_model = self.init_resnet(resnet_cutoff)
-        self._fc1 = nn.Linear(res18_out_dim, middle_out_dim)
-        self._lstm = nn.LSTM(middle_out_dim, hidden_dim)
+        self._cnn = self.init_resnet(resnet_cutoff)
+        self._fc1 = nn.Linear(cnn_out_dim, middle_out_dim)
+        self._lstm = nn.LSTM(middle_out_dim + 3, hidden_dim)
         self._fc2 = nn.Linear(hidden_dim, 6)
-        self._fc3 = nn.Linear(hidden_dim, 2)
-        self._fc4 = nn.Linear(hidden_dim, 2)
+        self._fc3 = nn.Linear(hidden_dim, 1)
 
-        self._sigmoid = nn.Sigmoid()
         self._tanh = nn.Tanh()
+        self._sigmoid = nn.Sigmoid()
 
     def init_hidden(self):
         self._hidden = (Variable(torch.zeros(1, 1, self._hidden_dim).cuda()),
@@ -37,19 +36,19 @@ class LSTMController(nn.Module):
 
         return res18_model
 
-    def forward(self, X):
-        X = self._res18_model(X.float()).detach()
+    def forward(self, X_img, X_coords):
+        X = self._cnn(X_img.float()).detach()
 
         X = self._sigmoid(self._fc1(X.view(len(X), -1)))
+        X = torch.cat((X, X_coords), 1)
 
         lstm_out, self._hidden = self._lstm(X.view(len(X), 1, -1), self._hidden)
         lstm_out = lstm_out.view(len(X), -1)
 
         out_vel = self._tanh(self._fc2(lstm_out))
-        out_open = self._fc3(lstm_out)
-        out_close = self._fc4(lstm_out)
+        out_claw = self._sigmoid(self._fc3(lstm_out))
         
-        return out_vel, out_open, out_close
+        return out_vel, out_claw
 
 if __name__ == "__main__" :
     print(models.__file__)

@@ -16,7 +16,6 @@ def check_training_directory(training_dir):
     # Ensures training data directory exists
     if not os.path.exists(training_dir):
         os.makedirs(training_dir)
-        return training_dir
 
     # Checks that the training data is not empty
     dir_files = os.listdir(training_dir)
@@ -27,6 +26,9 @@ def check_training_directory(training_dir):
     # Find all valid sequences
     valid_sequences = []
     for i, seq_filename in enumerate(dir_files):
+        if "bad" in seq_filename:
+            continue
+
         seq_path = os.path.join(training_dir, seq_filename)
         if not os.path.isdir(seq_path):
             continue

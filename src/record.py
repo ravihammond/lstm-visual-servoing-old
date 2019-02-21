@@ -10,6 +10,7 @@ import lstm_visual_servoing.msg
 import cv2
 import cv_bridge
 bridge = cv_bridge.CvBridge()
+import tf
 
 from PIL import ImageFont, ImageDraw, Image
 import numpy as np
@@ -25,11 +26,12 @@ import csv
 from utils import query_yes_no
 
 class Recorder():
-    def __init__(self, training_dir, max_frames):
+    def __init__(self, training_dir, max_frames, prefix):
         rospy.init_node('recorder', anonymous=False)
         rospy.Subscriber("/camera/color/image_raw", sensor_msgs.msg.Image, self.image_callback)
         rospy.Subscriber("visual_control",lstm_visual_servoing.msg.Control,self.control_callback)
         rospy.Subscriber("record_enabled",lstm_visual_servoing.msg.Recorder,self.recorder_callback)
+        self._tf_listener = tf.TransformListener()
 
         # Saves path of directory to save training data to 
         self._training_dir = training_dir
@@ -76,6 +78,8 @@ class Recorder():
         self._font_title_med = ImageFont.truetype(font_bold, 30)
         self._font_title_small = ImageFont.truetype(font_bold, 27)
         self._font_regular = ImageFont.truetype(font_regular, 25)
+
+        self._sequence_save_prefix = prefix
 
     # Extract total meta information
     def get_total_meta(self):
@@ -135,9 +139,14 @@ class Recorder():
                     # Resize images to resnet size
                     img_resized = cv2.resize(img_crop, (224, 224))
 
+                    # Add the x y z coordinates of the robot to the save file
+                    camera_t, camera_r = self._tf_listener.lookupTransform(
+                        'base','camera_color_optical_frame', rospy.Time())
+                    csv_save_list = self._control_message + camera_t
+
                     # Save current frame and velocities
                     cv2.imwrite(frame_path, img_resized)
-                    self._recorded_velocities.append(self._control_message)
+                    self._recorded_velocities.append(csv_save_list)
 
                 # Saving state
                 elif self._recording_state is 2:
@@ -240,7 +249,7 @@ class Recorder():
         self._recording_state = 1
         self.refresh_temp_dir()
         self._time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        self._recorded_velocities.append(['vx','vy','vz','rx','ry','rz','open','close'])
+        self._recorded_velocities.append(['vx','vy','vz','rx','ry','rz','claw', 'px', 'py', 'pz'])
 
     # Adds the information of the previous recording to the total recording information
     def update_meta_data(self):
@@ -260,10 +269,10 @@ class Recorder():
 
         # Rename temp directory
         if os.path.exists(self._temp_dir):
-            os.rename(self._temp_dir, self._training_dir + self._time)
+            os.rename(self._temp_dir, self._training_dir + self._time + self._sequence_save_prefix)
 
         # Write recorded velocities to file
-        vel_path = os.path.join(self._training_dir, self._time, self._vel_filename)
+        vel_path = os.path.join(self._training_dir, self._time + self._sequence_save_prefix, self._vel_filename)
         with open(vel_path, 'w') as csv_file:  
             csv.writer(csv_file, delimiter=',').writerows(self._recorded_velocities)
 
@@ -343,10 +352,11 @@ if __name__ == "__main__" :
     parser = argparse.ArgumentParser()
     parser.add_argument("training", help="name of directory to save recorded training data to")
     parser.add_argument("-f", "--frames", dest="frames", type=int, default=1000, help="automatically stops recording after given number of frames")
+    parser.add_argument("-p", "--prefix", dest="prefix", type=str, default="", help="string to add to end of sequence directory")
     args = parser.parse_args()
 
     training_dir = check_training_directory(args.training)
 
-    recorder = Recorder(training_dir, args.frames)
+    recorder = Recorder(training_dir, args.frames, args.prefix)
     recorder.record()
 
